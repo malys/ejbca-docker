@@ -1,0 +1,47 @@
+version: '3.7'
+
+networks:
+  br42:
+    external:
+      name: br42
+  br2:
+    external:
+      name: br2
+
+services:
+  ejbca:
+    environment:
+      - httpsserver_hostname
+      - database_host
+      - database_name
+      - database_username
+      - database_password
+      - database_type
+      - database_port
+      - superadmin_cn
+      - ca_name
+      - BASE_DN
+    build:
+      context: .
+    volumes:
+      - ./ejbca:/home/ejbca
+    networks:
+      br42:
+        ipv4_address: 192.168.42.9
+      br2:
+        ipv4_address: 192.168.1.241
+    dns:
+      - 192.168.42.1
+    extra_hosts:
+      - "mysql:192.168.42.4"
+      - "psql:192.168.1.247"
+    hostname: ejbca-dev
+    logging:
+      driver: json-file
+    # healthcheck:
+    #  test: ["CMD", "/bin/bash", "-c", "/bin/nc -z 127.0.0.1 8080 > /dev/null || exit 1"]
+    #  interval: 30s
+    #  timeout: 10s
+    #  retries: 5
+    #restart: unless-stopped
+
