@@ -41,7 +41,7 @@
 memsize=8192 # in MBytes
 ejbca_user=$(whoami)
 ejbca_group=$(id -g -n $ejbca_user)
-ejbca_home=~
+ejbca_home=/home/ejbca
 
 case $database_type in
   postgres)
@@ -75,7 +75,7 @@ EJBCA_RELEASE="6_15_2_5"
 EJBCA_DOWNLOAD_URL="https://downloads.sourceforge.net/project/ejbca/${EJBCA_MAJOR_VERSION}/${EJBCA_MINOR_VERSION}/ejbca_ce_${EJBCA_RELEASE}.zip"
 EJBCA_DOWNLOAD_SHA256_URL="https://downloads.sourceforge.net/project/ejbca/${EJBCA_MAJOR_VERSION}/${EJBCA_MINOR_VERSION}/ejbca_ce_${EJBCA_RELEASE}.zip.SHA-256"
 WILDFLY_TAR="wildfly-${WILDFLY_VERSION}.tar.gz"
-if [ "$WILDFLY_VERSION"="10" ]; then
+if [ "$WILDFLY_VERSION" == "10" ]; then
   WILDFLY_TAR_SHA256="80781609be387045273f974662dadf7f64ad43ee93395871429bc6b7786ec8bc"
 else
   WILDFLY_TAR_SHA256="e12092ec6a6e048bf696d5a23c3674928b41ddc3f810016ef3e7354ad79fc746"
@@ -141,7 +141,7 @@ EOF
 
 
 create_sql_index() {
-  cd ~ || exit 1
+  cd $ejbca_home || exit 1
   case $database_type in
     postgres)
       cat ejbca/doc/sql-scripts/create-index-ejbca.sql | PGPASSWORD="${sql_pass}" psql --host=${database_host} --username=${database_username} ${database_name}
@@ -170,13 +170,13 @@ wildfly_exec() {
 
 
 wildfly_shutdown() {
-  cd ~ || exit 1
+  cd $ejbca_home || exit 1
   wildfly/bin/jboss-cli.sh --connect command=:shutdown
 }
 
 
 wildfly_reload() {
-  cd ~ || exit 1
+  cd $ejbca_home || exit 1
   wildfly/bin/jboss-cli.sh --connect command=:reload
 }
 
@@ -189,7 +189,7 @@ wildfly_check() {
   DURATION=$(echo "$DURATION_SECONDS / 5" | bc)
 
   echo "wait ${DURATION_SECONDS}s for start up wildfly"
-  cd ~ || exit 1
+  cd $ejbca_home || exit 1
   for i in `seq 1 $DURATION`; do
     wildfly/bin/jboss-cli.sh --connect ":read-attribute(name=server-state)" | grep "result" | awk '{ print $3; }'|grep running
     if [ $? -eq 0 ]; then
@@ -211,7 +211,7 @@ ejbca_deploy_check() {
   DURATION=$(echo "$DURATION_SECONDS / 5" | bc)
 
   echo "wait ${DURATION_SECONDS}s for deploying EJBCA"
-  cd ~ || exit 1
+  cd $ejbca_home || exit 1
   for i in `seq 1 $DURATION`; do
     tail -50 wildfly/standalone/log/server.log |grep 'Deployed "ejbca.ear"' > /dev/null 2> /dev/null
     if [ $? -eq 0 ]; then
@@ -238,7 +238,7 @@ wildfly_enable_ajp() {
 
 
 wildfly_setup_https() {
-  cd ~ || exit 1
+  cd $ejbca_home || exit 1
 
   wildfly_server_config_dir="wildfly/standalone/configuration"
   keystore_password=$(grep '^httpsserver.password' ejbca-custom/conf/web.properties | awk -F= '{ print $2 }' | grep -v '^$')
@@ -487,7 +487,7 @@ ejbca_installer() {
   
   cp -a p12 ../ejbca-custom/
 
-  cd ~ || exit 1
+  cd $ejbca_home || exit 1
   #wildfly_exec ":shutdown"
   #nohup wildfly/bin/standalone.sh -b 0.0.0.0 > /dev/null 2> /dev/null &
   #wildfly_check 240
