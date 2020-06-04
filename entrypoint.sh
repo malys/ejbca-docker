@@ -6,18 +6,21 @@ export HOME
 cd ~ejbca || exit 1
 
 if [ -d ejbca-custom ]; then
-  . ./environment
+  FILE=./environment
+  if [[ -f "$FILE" ]]; then
+    . ./environment
+  fi
+
   export JAVA_OPTS
   echo "Run EJBCA"
   wildfly/bin/standalone.sh -b 0.0.0.0
 else
   echo "Install EJBCA"
-
-  ./ejbca-setup
+  /root/ejbca-setup
 fi
 EOF
 
-cp /root/ejbca-setup /home/ejbca/ejbca-setup
+#cp /root/ejbca-setup /home/ejbca/ejbca-setup
 chown -R ejbca:ejbca /home/ejbca
 chmod 700 /home/ejbca/entrypoint.ejbca.sh /home/ejbca/ejbca-setup
 

@@ -1,34 +1,24 @@
 version: '3.7'
-
-networks:
-  br42:
-    external:
-      name: br42
-
 services:
   ejbca:
     environment:
-      - httpsserver_hostname
-      - database_host
-      - database_name
-      - database_username
-      - database_password
-      - database_type
-      - database_port
-      - superadmin_cn
-      - ca_name
-      - BASE_DN
+      - httpsserver_hostname=localhost
+      - database_host=ejbca
+      - database_name=ejbcatest
+      - database_username=ejbca
+      - database_password=ejbca
+      - database_type=h2
+      - database_port=
+      - superadmin_cn=SuperAdmin2020
+      - ca_name=Management
+      - BASE_DN=O=My Example CA 2020,C=DE
+      - SOURCE=mounted
     build:
       context: .
     volumes:
-      - ./ejbca:/home/ejbca
-    networks:
-      br42:
-        ipv4_address: 192.168.42.9
-    dns:
-      - 192.168.42.1
-    extra_hosts:
-      - "psql:192.168.42.247"
+      - ./ejbca_src:/ejbca
+      - ./workspace:/home/ejbca
+      - ./ejbca-setup:/home/ejbca/ejbca-setup
     hostname: ejbca-dev
     logging:
       driver: json-file

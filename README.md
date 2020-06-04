@@ -16,10 +16,17 @@ Create an .env file:
     database_type=postgres
     database_port=5432
     #database_type=mysql
+
+    #database_type=h2
     
     superadmin_cn=SuperAdmin2020
     ca_name=Management
     BASE_DN=O=My Example CA 2020,C=DE
+
+    SOURCE=SVN|GIT|REMOTE
+    SOURCE not set -> use mounted folder
+
+
 
 Build container
 

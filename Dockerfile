@@ -1,6 +1,8 @@
 from centos:8
 maintainer Christian Felsing <support@felsing.net>
 
+ENV SOURCE=remote
+
 user root
 
 run \

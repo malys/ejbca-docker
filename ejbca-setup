@@ -23,13 +23,13 @@
 #
 ########################################################################################
 ########################################################################################
-#     #     #     ######   #     #  ###  #     #   #####   
-#  #  #    # #    #     #  ##    #   #   ##    #  #     #  
-#  #  #   #   #   #     #  # #   #   #   # #   #  #        
-#  #  #  #     #  ######   #  #  #   #   #  #  #  #  ####  
-#  #  #  #######  #   #    #   # #   #   #   # #  #     #  
-#  #  #  #     #  #    #   #    ##   #   #    ##  #     #  
- ## ##   #     #  #     #  #     #  ###  #     #   #####   
+#     #     #     ######   #     #  ###  #     #   #####
+#  #  #    # #    #     #  ##    #   #   ##    #  #     #
+#  #  #   #   #   #     #  # #   #   #   # #   #  #
+#  #  #  #     #  ######   #  #  #   #   #  #  #  #  ####
+#  #  #  #######  #   #    #   # #   #   #   # #  #     #
+#  #  #  #     #  #    #   #    ##   #   #    ##  #     #
+## ##   #     #  #     #  #     #  ###  #     #   #####
 
 # THIS SCRIPT WILL DESTROY EXISTING EJBCA INSTALLATION
 # YOU HAVE BEEN WARNED
@@ -44,24 +44,28 @@ ejbca_group=$(id -g -n $ejbca_user)
 ejbca_home=/home/ejbca
 
 case $database_type in
-  postgres)
-    database_url="jdbc:postgresql://${database_host}:${database_port}/${database_name}"
-    database_driver="org.postgresql.Driver"
-    JDBC_CONNECTOR_VERSION="42.2.5"
-    JDBC_DOWNLOAD_URL="https://jdbc.postgresql.org/download/postgresql-${JDBC_CONNECTOR_VERSION}.jar"
-    JDBC_DOWNLOAD_SHA256_URL=""
-  ;;
-  mysql)
-    database_url="jdbc:mysql://${database_host}:${database_port}/${database_name}?characterEncoding=UTF-8"
-    database_driver="org.mariadb.jdbc.Driver"
-    JDBC_CONNECTOR_VERSION="1.5.8"
-    JDBC_DOWNLOAD_URL="https://downloads.mariadb.com/Connectors/java/connector-java-${JDBC_CONNECTOR_VERSION}/mariadb-java-client-${JDBC_CONNECTOR_VERSION}.jar"
-    JDBC_DOWNLOAD_SHA256_URL="https://downloads.mariadb.com/Connectors/java/connector-java-${JDBC_CONNECTOR_VERSION}/sha256sums.txt"
-  ;;
-  *)
-    echo "unknown database type $database_type - must be either postgres or mysql"
-    failed
-  ;;
+    postgres)
+        database_url="jdbc:postgresql://${database_host}:${database_port}/${database_name}"
+        database_driver="org.postgresql.Driver"
+        JDBC_CONNECTOR_VERSION="42.2.5"
+        JDBC_DOWNLOAD_URL="https://jdbc.postgresql.org/download/postgresql-${JDBC_CONNECTOR_VERSION}.jar"
+        JDBC_DOWNLOAD_SHA256_URL=""
+    ;;
+    mysql)
+        database_url="jdbc:mysql://${database_host}:${database_port}/${database_name}?characterEncoding=UTF-8"
+        database_driver="org.mariadb.jdbc.Driver"
+        JDBC_CONNECTOR_VERSION="1.5.8"
+        JDBC_DOWNLOAD_URL="https://downloads.mariadb.com/Connectors/java/connector-java-${JDBC_CONNECTOR_VERSION}/mariadb-java-client-${JDBC_CONNECTOR_VERSION}.jar"
+        JDBC_DOWNLOAD_SHA256_URL="https://downloads.mariadb.com/Connectors/java/connector-java-${JDBC_CONNECTOR_VERSION}/sha256sums.txt"
+    ;;
+    h2)
+        database_url="jdbc:h2:/opt/${database_name};DB_CLOSE_DELAY=-1"
+        database_driver="org.h2.Driver"
+    ;;
+    *)
+        echo "unknown database type $database_type - must be either postgres or mysql"
+        failed
+    ;;
 esac
 ca_dn="CN=${ca_name},${BASE_DN}"
 
@@ -76,35 +80,36 @@ EJBCA_DOWNLOAD_URL="https://downloads.sourceforge.net/project/ejbca/${EJBCA_MAJO
 EJBCA_DOWNLOAD_SHA256_URL="https://downloads.sourceforge.net/project/ejbca/${EJBCA_MAJOR_VERSION}/${EJBCA_MINOR_VERSION}/ejbca_ce_${EJBCA_RELEASE}.zip.SHA-256"
 WILDFLY_TAR="wildfly-${WILDFLY_VERSION}.tar.gz"
 if [ "$WILDFLY_VERSION" == "10" ]; then
-  WILDFLY_TAR_SHA256="80781609be387045273f974662dadf7f64ad43ee93395871429bc6b7786ec8bc"
+    WILDFLY_TAR_SHA256="80781609be387045273f974662dadf7f64ad43ee93395871429bc6b7786ec8bc"
 else
-  WILDFLY_TAR_SHA256="e12092ec6a6e048bf696d5a23c3674928b41ddc3f810016ef3e7354ad79fc746"
+    WILDFLY_TAR_SHA256="e12092ec6a6e048bf696d5a23c3674928b41ddc3f810016ef3e7354ad79fc746"
 fi
 WILDFLY_DIR="wildfly-${WILDFLY_VERSION}"
+export APPSRV_HOME=$ejbca_home/$WILDFLY_DIR
 WILDFLY_DOWNLOAD_URL="https://download.jboss.org/wildfly/${WILDFLY_VERSION}/${WILDFLY_TAR}"
 
 ########################################################################################
 
 
 doPatch() {
-  if [ "$database_type" == "mysql" ]; then
-    if [ $EJBCA_RELEASE == "6_10_1_2" ]; then
-      cd ejbca || exit 1
-      sed -i.bak 's/<basic fetch="EAGER" name="clearPassword"><column name="clearPassword" column-definition="VARCHAR(250) BINARY"\/><\/basic>/<basic fetch="EAGER" name="clearPassword"><column name="clearPassword" column-definition="VARCHAR(1000) BINARY"\/><\/basic>/g' modules/ejbca-entity/resources/orm-ejbca-mysql.xml || exit 1
-      echo "patch for 6_10_1_2 applied"
-      cd ..
+    if [ "$database_type" == "mysql" ]; then
+        if [ $EJBCA_RELEASE == "6_10_1_2" ]; then
+            cd ejbca || exit 1
+            sed -i.bak 's/<basic fetch="EAGER" name="clearPassword"><column name="clearPassword" column-definition="VARCHAR(250) BINARY"\/><\/basic>/<basic fetch="EAGER" name="clearPassword"><column name="clearPassword" column-definition="VARCHAR(1000) BINARY"\/><\/basic>/g' modules/ejbca-entity/resources/orm-ejbca-mysql.xml || exit 1
+            echo "patch for 6_10_1_2 applied"
+            cd ..
+        fi
     fi
-  fi
 }
 
 
 pwgen() {
-  NEW_PASSWORD=$(dd if=/dev/urandom bs=1 count=64 2> /dev/null | sha512sum | awk '{print $1}' | tr -d "\n")
-  if [ -z "$NEW_PASSWORD" ]; then
-    echo "Created empty password - very bad"
-    exit 1
-  fi
-  echo -n "${NEW_PASSWORD}"
+    NEW_PASSWORD=$(dd if=/dev/urandom bs=1 count=64 2> /dev/null | sha512sum | awk '{print $1}' | tr -d "\n")
+    if [ -z "$NEW_PASSWORD" ]; then
+        echo "Created empty password - very bad"
+        exit 1
+    fi
+    echo -n "${NEW_PASSWORD}"
 }
 
 keystorepass=$(pwgen)
@@ -114,11 +119,11 @@ cmskeystorepass=$(pwgen)
 
 
 init_sql() {
-  sql_user=$(grep database.username ejbca-custom/conf/database.properties | awk -F= '{ print $2 }' | grep -v '^$')
-  sql_pass=$(grep database.password ejbca-custom/conf/database.properties | awk -F= '{ print $2 }' | grep -v '^$')
-  sql_host=$(grep database.url ejbca-custom/conf/database.properties | awk -F/ '{print $3}' | awk -F: '{print $1}' | grep -v '^$')
-  case $database_type in
-    postgres)
+    sql_user=$(grep database.username ejbca-custom/conf/database.properties | awk -F= '{ print $2 }' | grep -v '^$')
+    sql_pass=$(grep database.password ejbca-custom/conf/database.properties | awk -F= '{ print $2 }' | grep -v '^$')
+    sql_host=$(grep database.url ejbca-custom/conf/database.properties | awk -F/ '{print $3}' | awk -F: '{print $1}' | grep -v '^$')
+    case $database_type in
+        postgres)
 SQL=$(cat << EOF
 DO \$\$ DECLARE
     r RECORD;
@@ -128,392 +133,413 @@ BEGIN
     END LOOP;
 END \$\$;
 EOF
-)
-      echo "$SQL" | PGPASSWORD="${sql_pass}" psql --username=$sql_user --host=${sql_host} ${database_name}
-    ;;
-    mysql)
-      echo "drop database ${database_name};" | mysql --user=$sql_user --password=$sql_pass --host=${sql_host}
-      echo "create database ${database_name} default character set = utf8 default collate = utf8_general_ci;" | mysql --user=$sql_user --password=$sql_pass --host=${sql_host} || exit 1
-    ;;
-  esac
-
+            )
+                echo "$SQL" | PGPASSWORD="${sql_pass}" psql --username=$sql_user --host=${sql_host} ${database_name}
+            ;;
+            mysql)
+                echo "drop database ${database_name};" | mysql --user=$sql_user --password=$sql_pass --host=${sql_host}
+                echo "create database ${database_name} default character set = utf8 default collate = utf8_general_ci;" | mysql --user=$sql_user --password=$sql_pass --host=${sql_host} || exit 1
+            ;;
+    esac
+    
 }
 
 
 create_sql_index() {
-  cd $ejbca_home || exit 1
-  case $database_type in
-    postgres)
-      cat ejbca/doc/sql-scripts/create-index-ejbca.sql | PGPASSWORD="${sql_pass}" psql --host=${database_host} --username=${database_username} ${database_name}
-    ;;
-    mysql)
-      cat ejbca/doc/sql-scripts/create-index-ejbca.sql | mysql --host=${database_host} --user=${database_username} --password=${database_password} ${database_name}
-    ;;
-  esac
+    cd $ejbca_home || exit 1
+    case $database_type in
+        postgres)
+            cat ejbca/doc/sql-scripts/create-index-ejbca.sql | PGPASSWORD="${sql_pass}" psql --host=${database_host} --username=${database_username} ${database_name}
+        ;;
+        mysql)
+            cat ejbca/doc/sql-scripts/create-index-ejbca.sql | mysql --host=${database_host} --user=${database_username} --password=${database_password} ${database_name}
+        ;;
+    esac
 }
 
 
 wildfly_killall() {
-  pidof java > /dev/null 2> /dev/null
-  if [ $? -eq 0 ]; then
-    killall -9 java
-    sleep 10
-  fi
+    pidof java > /dev/null 2> /dev/null
+    if [ $? -eq 0 ]; then
+        killall -9 java
+        sleep 10
+    fi
 }
 
 
 wildfly_exec() {
-  cmd="$1"
-  echo "$cmd"
-  wildfly/bin/jboss-cli.sh --connect "$cmd"
+    cmd="$1"
+    echo "$cmd"
+    wildfly/bin/jboss-cli.sh --connect "$cmd"
 }
 
 
 wildfly_shutdown() {
-  cd $ejbca_home || exit 1
-  wildfly/bin/jboss-cli.sh --connect command=:shutdown
+    cd $ejbca_home || exit 1
+    wildfly/bin/jboss-cli.sh --connect command=:shutdown
 }
 
 
 wildfly_reload() {
-  cd $ejbca_home || exit 1
-  wildfly/bin/jboss-cli.sh --connect command=:reload
+    cd $ejbca_home || exit 1
+    wildfly/bin/jboss-cli.sh --connect command=:reload
 }
 
 
 wildfly_check() {
-  DURATION_SECONDS=30
-  if [ ! -z "$1" ]; then
-    DURATION_SECONDS="$1"
-  fi
-  DURATION=$(echo "$DURATION_SECONDS / 5" | bc)
-
-  echo "wait ${DURATION_SECONDS}s for start up wildfly"
-  cd $ejbca_home || exit 1
-  for i in `seq 1 $DURATION`; do
-    wildfly/bin/jboss-cli.sh --connect ":read-attribute(name=server-state)" | grep "result" | awk '{ print $3; }'|grep running
-    if [ $? -eq 0 ]; then
-      return 0
+    DURATION_SECONDS=30
+    if [ ! -z "$1" ]; then
+        DURATION_SECONDS="$1"
     fi
-    sleep 5
-  done
-  echo "wildfly not started after ${DURATION_SECONDS}s, exit"
-  exit 1
+    DURATION=$(echo "$DURATION_SECONDS / 5" | bc)
+    
+    echo "wait ${DURATION_SECONDS}s for start up wildfly"
+    cd $ejbca_home || exit 1
+    for i in `seq 1 $DURATION`; do
+        wildfly/bin/jboss-cli.sh --connect ":read-attribute(name=server-state)" | grep "result" | awk '{ print $3; }'|grep running
+        if [ $? -eq 0 ]; then
+            return 0
+        fi
+        sleep 5
+    done
+    echo "wildfly not started after ${DURATION_SECONDS}s, exit"
+    exit 1
 }
 
 
 ejbca_deploy_check() {
-  cd ~
-  DURATION_SECONDS=30
-  if [ ! -z "$1" ]; then
-    DURATION_SECONDS="$1"
-  fi
-  DURATION=$(echo "$DURATION_SECONDS / 5" | bc)
-
-  echo "wait ${DURATION_SECONDS}s for deploying EJBCA"
-  cd $ejbca_home || exit 1
-  for i in `seq 1 $DURATION`; do
-    tail -50 wildfly/standalone/log/server.log |grep 'Deployed "ejbca.ear"' > /dev/null 2> /dev/null
-    if [ $? -eq 0 ]; then
-      echo "EJBCA deployed"
-      return 0
+    cd ~
+    DURATION_SECONDS=30
+    if [ ! -z "$1" ]; then
+        DURATION_SECONDS="$1"
     fi
-    sleep 5
-  done
-  echo "EJBCA not deployed after ${DURATION_SECONDS}s, exit"
-  exit 1
+    DURATION=$(echo "$DURATION_SECONDS / 5" | bc)
+    
+    echo "wait ${DURATION_SECONDS}s for deploying EJBCA"
+    cd $ejbca_home || exit 1
+    for i in `seq 1 $DURATION`; do
+        tail -50 wildfly/standalone/log/server.log |grep 'Deployed "ejbca.ear"' > /dev/null 2> /dev/null
+        if [ $? -eq 0 ]; then
+            echo "EJBCA deployed"
+            return 0
+        fi
+        sleep 5
+    done
+    echo "EJBCA not deployed after ${DURATION_SECONDS}s, exit"
+    exit 1
 }
 
 
 start_wildfly() {
-  . ${ejbca_home}/environment
-  export JAVA_OPTS
-  nohup wildfly/bin/standalone.sh -b 0.0.0.0 > /dev/null 2> /dev/null &
+    . ${ejbca_home}/environment
+    export JAVA_OPTS
+    nohup wildfly/bin/standalone.sh -b 0.0.0.0 > /dev/null 2> /dev/null &
 }
 
 
 wildfly_enable_ajp() {
-  wildfly/bin/jboss-cli.sh --connect "/subsystem=undertow/server=default-server/ajp-listener=ajp-listener:add(socket-binding=ajp, scheme=https, enabled=true)"
+    wildfly/bin/jboss-cli.sh --connect "/subsystem=undertow/server=default-server/ajp-listener=ajp-listener:add(socket-binding=ajp, scheme=https, enabled=true)"
 }
 
 
 wildfly_setup_https() {
-  cd $ejbca_home || exit 1
-
-  wildfly_server_config_dir="wildfly/standalone/configuration"
-  keystore_password=$(grep '^httpsserver.password' ejbca-custom/conf/web.properties | awk -F= '{ print $2 }' | grep -v '^$')
-  truststore_pass=$(grep '^java.trustpassword' ejbca-custom/conf/web.properties | awk -F= '{ print $2 }' | grep -v '^$')
-  web_hostname=$(grep '^httpsserver.hostname' ejbca-custom/conf/web.properties | awk -F= '{ print $2 }' | grep -v '^$')
-
-  if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
-    wildfly_exec "/interface=http:add(inet-address=\"0.0.0.0\")"
-    wildfly_exec "/interface=httpspub:add(inet-address=\"0.0.0.0\")"
-    wildfly_exec "/interface=httpspriv:add(inet-address=\"0.0.0.0\")"
-    wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=http:add(port="8080",interface=\"http\")"
-    wildfly_exec "/subsystem=undertow/server=default-server/http-listener=http:add(socket-binding=http)"
-    wildfly_exec "/subsystem=undertow/server=default-server/http-listener=http:write-attribute(name=redirect-socket, value=\"httpspriv\")"
-  else
-    wildfly_exec "/interface=http:add(inet-address=\"0.0.0.0\")"
-    wildfly_exec "/interface=httpspub:add(inet-address=\"0.0.0.0\")"
-    wildfly_exec "/interface=httpspriv:add(inet-address=\"0.0.0.0\")"
-    wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=http:add(port=\"8080\",interface=\"http\")"
-    wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=httpspub:add(port=\"8442\",interface=\"httpspub\")"
-    wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=httpspriv:add(port=\"8443\",interface=\"httpspriv\")"
-  fi
-  wildfly_exec ":reload"
-
-  wildfly_check
-  
-  if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
-    wildfly_exec "/core-service=management/security-realm=SSLRealm:add()"
-    wildfly_exec "/core-service=management/security-realm=SSLRealm/server-identity=ssl:add(keystore-path=\"${wildfly_server_config_dir}/keystore/keystore.jks\", keystore-password=\"${keystore_password}\", alias=\"${web_hostname}\")"
-    wildfly_exec "/core-service=management/security-realm=SSLRealm/authentication=truststore:add(keystore-path=\"${wildfly_server_config_dir}/keystore/truststore.jks\", keystore-password=\"${truststore_pass}\")"
-    wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=httpspriv:add(port="8443",interface=\"httpspriv\")"
-    wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=httpspub:add(port="8442", interface=\"httpspub\")"
-  else
-    wildfly_exec "/subsystem=elytron/key-store=httpsKS:add(path=\"/keystore/keystore.jks\",relative-to=jboss.server.config.dir,credential-reference={clear-text=\"${keystore_password}\"},type=JKS)"
-    wildfly_exec "/subsystem=elytron/key-store=httpsTS:add(path=\"/keystore/truststore.jks\",relative-to=jboss.server.config.dir,credential-reference={clear-text=\"${truststore_pass}\"},type=JKS)"
-    wildfly_exec "/subsystem=elytron/key-manager=httpsKM:add(key-store=httpsKS,alias-filter=\"${web_hostname}\",algorithm=\"SunX509\",credential-reference={clear-text=\"${keystore_password}\"})"
-    wildfly_exec "/subsystem=elytron/trust-manager=httpsTM:add(key-store=httpsTS)"
-    wildfly_exec "/subsystem=elytron/server-ssl-context=httpspub:add(key-manager=httpsKM,protocols=[\"TLSv1.2\"])"
-    wildfly_exec "/subsystem=elytron/server-ssl-context=httpspriv:add(key-manager=httpsKM,protocols=[\"TLSv1.2\"],trust-manager=httpsTM,need-client-auth=true,authentication-optional=false,want-client-auth=true)"
-  fi
-
-  wildfly_exec ":shutdown"
-  start_wildfly
-  wildfly_check 240
-
-  if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
-    wildfly_exec "/subsystem=undertow/server=default-server/https-listener=httpspriv:add(socket-binding=httpspriv, security-realm=\"SSLRealm\", verify-client=REQUIRED)"
-    wildfly_exec "/subsystem=undertow/server=default-server/https-listener=httpspub:add(socket-binding=httpspub, security-realm=\"SSLRealm\")"
-  else
-    wildfly_exec "/subsystem=undertow/server=default-server/http-listener=http:add(socket-binding=\"http\", redirect-socket=\"httpspriv\")"
-    wildfly_exec "/subsystem=undertow/server=default-server/https-listener=httpspub:add(socket-binding=\"httpspub\", ssl-context=\"httpspub\", max-parameters=2048)"
-    wildfly_exec "/subsystem=undertow/server=default-server/https-listener=httpspriv:add(socket-binding=\"httpspriv\", ssl-context=\"httpspriv\", max-parameters=2048)"
-  fi
-  wildfly_exec ":reload"
-  wildfly_check 30
-
-  if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
-    wildfly_exec "/system-property=org.apache.tomcat.util.buf.UDecoder.ALLOW_ENCODED_SLASH:add(value=true)"
-    wildfly_exec "/system-property=org.apache.catalina.connector.CoyoteAdapter.ALLOW_BACKSLASH:add(value=true)"
-    wildfly_exec "/system-property=org.apache.catalina.connector.URI_ENCODING:add(value=\"UTF-8\")"
-    wildfly_exec "/system-property=org.apache.catalina.connector.USE_BODY_ENCODING_FOR_QUERY_STRING:add(value=true)"
-    wildfly_exec "/subsystem=webservices:write-attribute(name=wsdl-host, value=jbossws.undefined.host)"
-    wildfly_exec "/subsystem=webservices:write-attribute(name=modify-wsdl-address, value=true)"
-  else
-    wildfly_exec "/system-property=org.apache.catalina.connector.URI_ENCODING:add(value=\"UTF-8\")"
-    wildfly_exec "/system-property=org.apache.catalina.connector.USE_BODY_ENCODING_FOR_QUERY_STRING:add(value=true)"
-    wildfly_exec "/system-property=org.apache.tomcat.util.buf.UDecoder.ALLOW_ENCODED_SLASH:add(value=true)"
-    wildfly_exec "/system-property=org.apache.tomcat.util.http.Parameters.MAX_COUNT:add(value=2048)"
-    wildfly_exec "/system-property=org.apache.catalina.connector.CoyoteAdapter.ALLOW_BACKSLASH:add(value=true)"
-    wildfly_exec "/subsystem=webservices:write-attribute(name=wsdl-host, value=jbossws.undefined.host)"
-    wildfly_exec "/subsystem=webservices:write-attribute(name=modify-wsdl-address, value=true)"
-  fi
-  wildfly_exec ":reload"
-  wildfly_check 30
+    cd $ejbca_home || exit 1
+    
+    wildfly_server_config_dir="wildfly/standalone/configuration"
+    keystore_password=$(grep '^httpsserver.password' ejbca-custom/conf/web.properties | awk -F= '{ print $2 }' | grep -v '^$')
+    truststore_pass=$(grep '^java.trustpassword' ejbca-custom/conf/web.properties | awk -F= '{ print $2 }' | grep -v '^$')
+    web_hostname=$(grep '^httpsserver.hostname' ejbca-custom/conf/web.properties | awk -F= '{ print $2 }' | grep -v '^$')
+    
+    if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
+        wildfly_exec "/interface=http:add(inet-address=\"0.0.0.0\")"
+        wildfly_exec "/interface=httpspub:add(inet-address=\"0.0.0.0\")"
+        wildfly_exec "/interface=httpspriv:add(inet-address=\"0.0.0.0\")"
+        wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=http:add(port="8080",interface=\"http\")"
+        wildfly_exec "/subsystem=undertow/server=default-server/http-listener=http:add(socket-binding=http)"
+        wildfly_exec "/subsystem=undertow/server=default-server/http-listener=http:write-attribute(name=redirect-socket, value=\"httpspriv\")"
+    else
+        wildfly_exec "/interface=http:add(inet-address=\"0.0.0.0\")"
+        wildfly_exec "/interface=httpspub:add(inet-address=\"0.0.0.0\")"
+        wildfly_exec "/interface=httpspriv:add(inet-address=\"0.0.0.0\")"
+        wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=http:add(port=\"8080\",interface=\"http\")"
+        wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=httpspub:add(port=\"8442\",interface=\"httpspub\")"
+        wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=httpspriv:add(port=\"8443\",interface=\"httpspriv\")"
+    fi
+    wildfly_exec ":reload"
+    
+    wildfly_check
+    
+    if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
+        wildfly_exec "/core-service=management/security-realm=SSLRealm:add()"
+        wildfly_exec "/core-service=management/security-realm=SSLRealm/server-identity=ssl:add(keystore-path=\"${wildfly_server_config_dir}/keystore/keystore.jks\", keystore-password=\"${keystore_password}\", alias=\"${web_hostname}\")"
+        wildfly_exec "/core-service=management/security-realm=SSLRealm/authentication=truststore:add(keystore-path=\"${wildfly_server_config_dir}/keystore/truststore.jks\", keystore-password=\"${truststore_pass}\")"
+        wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=httpspriv:add(port="8443",interface=\"httpspriv\")"
+        wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=httpspub:add(port="8442", interface=\"httpspub\")"
+    else
+        wildfly_exec "/subsystem=elytron/key-store=httpsKS:add(path=\"/keystore/keystore.jks\",relative-to=jboss.server.config.dir,credential-reference={clear-text=\"${keystore_password}\"},type=JKS)"
+        wildfly_exec "/subsystem=elytron/key-store=httpsTS:add(path=\"/keystore/truststore.jks\",relative-to=jboss.server.config.dir,credential-reference={clear-text=\"${truststore_pass}\"},type=JKS)"
+        wildfly_exec "/subsystem=elytron/key-manager=httpsKM:add(key-store=httpsKS,alias-filter=\"${web_hostname}\",algorithm=\"SunX509\",credential-reference={clear-text=\"${keystore_password}\"})"
+        wildfly_exec "/subsystem=elytron/trust-manager=httpsTM:add(key-store=httpsTS)"
+        wildfly_exec "/subsystem=elytron/server-ssl-context=httpspub:add(key-manager=httpsKM,protocols=[\"TLSv1.2\"])"
+        wildfly_exec "/subsystem=elytron/server-ssl-context=httpspriv:add(key-manager=httpsKM,protocols=[\"TLSv1.2\"],trust-manager=httpsTM,need-client-auth=true,authentication-optional=false,want-client-auth=true)"
+    fi
+    
+    wildfly_exec ":shutdown"
+    start_wildfly
+    wildfly_check 240
+    
+    if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
+        wildfly_exec "/subsystem=undertow/server=default-server/https-listener=httpspriv:add(socket-binding=httpspriv, security-realm=\"SSLRealm\", verify-client=REQUIRED)"
+        wildfly_exec "/subsystem=undertow/server=default-server/https-listener=httpspub:add(socket-binding=httpspub, security-realm=\"SSLRealm\")"
+    else
+        wildfly_exec "/subsystem=undertow/server=default-server/http-listener=http:add(socket-binding=\"http\", redirect-socket=\"httpspriv\")"
+        wildfly_exec "/subsystem=undertow/server=default-server/https-listener=httpspub:add(socket-binding=\"httpspub\", ssl-context=\"httpspub\", max-parameters=2048)"
+        wildfly_exec "/subsystem=undertow/server=default-server/https-listener=httpspriv:add(socket-binding=\"httpspriv\", ssl-context=\"httpspriv\", max-parameters=2048)"
+    fi
+    wildfly_exec ":reload"
+    wildfly_check 30
+    
+    if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
+        wildfly_exec "/system-property=org.apache.tomcat.util.buf.UDecoder.ALLOW_ENCODED_SLASH:add(value=true)"
+        wildfly_exec "/system-property=org.apache.catalina.connector.CoyoteAdapter.ALLOW_BACKSLASH:add(value=true)"
+        wildfly_exec "/system-property=org.apache.catalina.connector.URI_ENCODING:add(value=\"UTF-8\")"
+        wildfly_exec "/system-property=org.apache.catalina.connector.USE_BODY_ENCODING_FOR_QUERY_STRING:add(value=true)"
+        wildfly_exec "/subsystem=webservices:write-attribute(name=wsdl-host, value=jbossws.undefined.host)"
+        wildfly_exec "/subsystem=webservices:write-attribute(name=modify-wsdl-address, value=true)"
+    else
+        wildfly_exec "/system-property=org.apache.catalina.connector.URI_ENCODING:add(value=\"UTF-8\")"
+        wildfly_exec "/system-property=org.apache.catalina.connector.USE_BODY_ENCODING_FOR_QUERY_STRING:add(value=true)"
+        wildfly_exec "/system-property=org.apache.tomcat.util.buf.UDecoder.ALLOW_ENCODED_SLASH:add(value=true)"
+        wildfly_exec "/system-property=org.apache.tomcat.util.http.Parameters.MAX_COUNT:add(value=2048)"
+        wildfly_exec "/system-property=org.apache.catalina.connector.CoyoteAdapter.ALLOW_BACKSLASH:add(value=true)"
+        wildfly_exec "/subsystem=webservices:write-attribute(name=wsdl-host, value=jbossws.undefined.host)"
+        wildfly_exec "/subsystem=webservices:write-attribute(name=modify-wsdl-address, value=true)"
+    fi
+    wildfly_exec ":reload"
+    wildfly_check 30
 }
 
 
 # Configure logging
 wildfly_setup_logging() {
-  #if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
+    #if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
     wildfly_exec "/subsystem=logging/logger=org.ejbca:add"
     wildfly_exec "/subsystem=logging/logger=org.ejbca:write-attribute(name=level, value=DEBUG)"
     wildfly_exec "/subsystem=logging/logger=org.cesecore:add"
     wildfly_exec "/subsystem=logging/logger=org.cesecore:write-attribute(name=level, value=DEBUG)"
-  #else
-  #  wildfly_exec "/subsystem=logging/logger=org.ejbca:add(level=INFO)"
-  #  wildfly_exec "/subsystem=logging/logger=org.cesecore:add(level=INFO)"
-  #fi
-  wildfly_exec ":reload"
-  wildfly_check 30
+    #else
+    #  wildfly_exec "/subsystem=logging/logger=org.ejbca:add(level=INFO)"
+    #  wildfly_exec "/subsystem=logging/logger=org.cesecore:add(level=INFO)"
+    #fi
+    wildfly_exec ":reload"
+    wildfly_check 30
 }
 
 
 ejbca_get_release() {
-  cd Download
-  if [ ! -f ejbca_ce_${EJBCA_RELEASE}.zip ]; then
-    curl -o ejbca_ce_${EJBCA_RELEASE}.zip -L "${EJBCA_DOWNLOAD_URL}"
-    curl -o ejbca_ce_${EJBCA_RELEASE}.zip.SHA256 -L "${EJBCA_DOWNLOAD_SHA256_URL}"
-    sha256sum --check ejbca_ce_${EJBCA_RELEASE}.zip.SHA256
-    if [ $? -ne 0 ]; then
-       echo "SHA256 for EJBCA does not match"
-       rm -rf "ejbca_ce_${EJBCA_RELEASE}.zip" "ejbca_ce_${EJBCA_RELEASE}.zip.SHA256"
-       exit 1
+    cd Download
+    if [ ! -f ejbca_ce_${EJBCA_RELEASE}.zip ]; then
+        curl -o ejbca_ce_${EJBCA_RELEASE}.zip -L "${EJBCA_DOWNLOAD_URL}"
+        curl -o ejbca_ce_${EJBCA_RELEASE}.zip.SHA256 -L "${EJBCA_DOWNLOAD_SHA256_URL}"
+        sha256sum --check ejbca_ce_${EJBCA_RELEASE}.zip.SHA256
+        if [ $? -ne 0 ]; then
+            echo "SHA256 for EJBCA does not match"
+            rm -rf "ejbca_ce_${EJBCA_RELEASE}.zip" "ejbca_ce_${EJBCA_RELEASE}.zip.SHA256"
+            exit 1
+        fi
     fi
-  fi
-  cd ..
-  unzip Download/ejbca_ce_${EJBCA_RELEASE}.zip || exit 1
-  if [ -h ejbca ]; then
-    rm -f ejbca
-  fi
-  ln -s ejbca_ce_${EJBCA_RELEASE} ejbca
-
-  doPatch
+    cd ..
+    unzip Download/ejbca_ce_${EJBCA_RELEASE}.zip || exit 1
+    if [ -h ejbca ]; then
+        rm -f ejbca
+    fi
+    ln -s ejbca_ce_${EJBCA_RELEASE} ejbca
+    
+    doPatch
 }
 
 
 ejbca_get_trunk() {
-  svn co https://svn.cesecore.eu/svn/ejbca/trunk/ejbca/
+    svn co https://svn.cesecore.eu/svn/ejbca/trunk/ejbca/
+}
+
+ejbca_get_trunk_git() {
+    git clone --depth 1 https://github.com/rgorosito/ejbca
+}
+
+get_source(){
+    if [ "${SOURCE}" = "SVN" ]; then
+        ejbca_get_trunk
+    fi
+    
+    if [ "${SOURCE}" = "GIT" ]; then
+        ejbca_get_trunk_git
+    fi
+    
+    if [ "${SOURCE}" = "REMOTE" ]; then
+        ejbca_get_release
+    fi
 }
 
 
 ejbca_installer() {
-  cd ~
-
-  wildfly_killall
-
-  create_config_files
-
-  init_sql
-
-  if [ ! -d Download ]; then
-    mkdir Download
-  fi
-
-  cd Download
-  if [ ! -f ${WILDFLY_TAR} ]; then
-    curl -o ${WILDFLY_TAR} -L ${WILDFLY_DOWNLOAD_URL}
-    echo ${WILDFLY_TAR_SHA256} ${WILDFLY_TAR} > ${WILDFLY_TAR}.sha256
-    sha256sum --check ${WILDFLY_TAR}.sha256
-    if [ $? -ne 0 ]; then
-       echo "SHA256 for wildfly does not match"
-       rm -f "${WILDFLY_TAR}"
-       exit 1
+    cd ~
+    
+    wildfly_killall
+    
+    create_config_files
+    
+    init_sql
+    
+    if [ ! -d Download ]; then
+        mkdir Download
     fi
-  fi
-  cd ..
-
-  if [ ! -f Download/db-java-client-${JDBC_CONNECTOR_VERSION}.jar ]; then
+    
     cd Download
-    curl -o db-java-client-${JDBC_CONNECTOR_VERSION}.jar -L ${JDBC_DOWNLOAD_URL}
-    if [ ! -z "$JDBC_DOWNLOAD_SHA256_URL" ]; then
-      curl -o db-java-client-${JDBC_CONNECTOR_VERSION}.sha256 -L ${JDBC_DOWNLOAD_SHA256_URL}
-      sha256sum --check db-java-client-${JDBC_CONNECTOR_VERSION}.sha256 2>&1| grep db-java-client-${JDBC_CONNECTOR_VERSION}.jar
-      if [ $? -ne 0 ]; then
-         echo "SHA256 for db-java-client does not match"
-         rm -rf "db-java-client-${JDBC_CONNECTOR_VERSION}.jar" "db-java-client-${JDBC_CONNECTOR_VERSION}.sha256"
-         exit 1
-      fi
+    if [ ! -f ${WILDFLY_TAR} ]; then
+        curl -o ${WILDFLY_TAR} -L ${WILDFLY_DOWNLOAD_URL}
+        echo ${WILDFLY_TAR_SHA256} ${WILDFLY_TAR} > ${WILDFLY_TAR}.sha256
+        sha256sum --check ${WILDFLY_TAR}.sha256
+        if [ $? -ne 0 ]; then
+            echo "SHA256 for wildfly does not match"
+            rm -f "${WILDFLY_TAR}"
+            exit 1
+        fi
     fi
     cd ..
-  fi
-  
-  rm -rf "${WILDFLY_DIR}" > /dev/null 2> /dev/null
-  rm -rf "ejbca_ce_${EJBCA_RELEASE}" > /dev/null 2> /dev/null
+    
+    if [  "$database_type" != "h2"  ]; then
+      if [ ! -f Download/db-java-client-${JDBC_CONNECTOR_VERSION}.jar ]; then
+          cd Download
+          curl -o db-java-client-${JDBC_CONNECTOR_VERSION}.jar -L ${JDBC_DOWNLOAD_URL}
+          if [ ! -z "$JDBC_DOWNLOAD_SHA256_URL" ]; then
+              curl -o db-java-client-${JDBC_CONNECTOR_VERSION}.sha256 -L ${JDBC_DOWNLOAD_SHA256_URL}
+              sha256sum --check db-java-client-${JDBC_CONNECTOR_VERSION}.sha256 2>&1| grep db-java-client-${JDBC_CONNECTOR_VERSION}.jar
+              if [ $? -ne 0 ]; then
+                  echo "SHA256 for db-java-client does not match"
+                  rm -rf "db-java-client-${JDBC_CONNECTOR_VERSION}.jar" "db-java-client-${JDBC_CONNECTOR_VERSION}.sha256"
+                  exit 1
+              fi
+          fi
+          cd ..
+      fi
+    fi
 
-  ejbca_get_release
-  #ejbca_get_trunk
-  
-  tar xvf Download/${WILDFLY_TAR}
-  if [ -h wildfly ]; then
-    rm -f wildfly
-  fi
-  ln -s "${WILDFLY_DIR}" wildfly
-  
-  cp "Download/db-java-client-${JDBC_CONNECTOR_VERSION}.jar" "wildfly/standalone/deployments/db-java-client.jar" || exit 1
-
-  echo "remove resteasy-crypto"
-  remove_resteasy_crypto
-   
-  create_environment
-  start_wildfly
-  sleep 3
-  wildfly_check || exit 1
-  wildfly_enable_ajp || exit 1
-  tune_wildfly || exit 1
-  wildfly_reload || exit 1
-  wildfly_check || exit 1
-  
-  # Add datasource
-  case $database_type in
-    postgres)
-      wildfly_exec "data-source add --name=ejbcads --driver-name=\"db-java-client.jar\" --connection-url=\"jdbc:postgresql://${sql_host}:${database_port}/${database_name}\" --jndi-name=\"java:/EjbcaDS\" --use-ccm=true --driver-class=\"org.postgresql.Driver\" --user-name=\"${sql_user}\" --password=\"${sql_pass}\" --validate-on-match=true --background-validation=false --prepared-statements-cache-size=50 --share-prepared-statements=true --min-pool-size=5 --max-pool-size=150 --pool-prefill=true --transaction-isolation=TRANSACTION_READ_COMMITTED --check-valid-connection-sql=\"select 1;\""
-      ;;
-    mysql)
-      wildfly_exec "data-source add --name=ejbcads --driver-name=\"db-java-client.jar\" --connection-url=\"jdbc:mysql://${sql_host}:${database_port}/${database_name}\" --jndi-name=\"java:/EjbcaDS\" --use-ccm=true --driver-class=\"org.mariadb.jdbc.Driver\" --user-name=\"${sql_user}\" --password=\"${sql_pass}\" --validate-on-match=true --background-validation=false --prepared-statements-cache-size=50 --share-prepared-statements=true --min-pool-size=5 --max-pool-size=150 --pool-prefill=true --transaction-isolation=TRANSACTION_READ_COMMITTED --check-valid-connection-sql=\"select 1;\""
-    ;;
-  esac
-  wildfly_exec ":reload"
-  
-  # Configure WildFly Remoting
-  if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
-    wildfly_exec "/subsystem=remoting/http-connector=http-remoting-connector:remove"
-    wildfly_exec "/subsystem=remoting/http-connector=http-remoting-connector:add(connector-ref=\"remoting\",security-realm=\"ApplicationRealm\")"
-    wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=remoting:add(port=\"4447\")"
-    wildfly_exec "/subsystem=undertow/server=default-server/http-listener=remoting:add(socket-binding=remoting)"
-  else
-    wildfly_exec "/subsystem=infinispan/cache-container=ejb:remove()"
-    wildfly_exec "/subsystem=infinispan/cache-container=server:remove()"
-    wildfly_exec "/subsystem=infinispan/cache-container=web:remove()"
-    wildfly_exec "/subsystem=ejb3/cache=distributable:remove()"
-    wildfly_exec "/subsystem=ejb3/passivation-store=infinispan:remove()"
-    wildfly_exec "/subsystem=remoting/http-connector=http-remoting-connector:write-attribute(name=connector-ref,value=remoting)"
-    wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=remoting:add(port=4447,interface=management)"
-    wildfly_exec "/subsystem=undertow/server=default-server/http-listener=remoting:add(socket-binding=remoting,enable-http2=true)"
-  fi
-  wildfly_exec ":reload"
-
-  # Remove existing TLS and HTTP configuration
-  if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
-    wildfly_exec "/subsystem=undertow/server=default-server/http-listener=default:remove"
-    wildfly_exec "/subsystem=undertow/server=default-server/https-listener=https:remove"
-    wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=http:remove"
-    wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=https:remove"
+    rm -rf "${WILDFLY_DIR}" > /dev/null 2> /dev/null
+    rm -rf "ejbca_ce_${EJBCA_RELEASE}" > /dev/null 2> /dev/null
+    
+    get_source
+    
+    
+    tar xvf Download/${WILDFLY_TAR}
+    if [ -h wildfly ]; then
+        rm -f wildfly
+    fi
+    ln -s "${WILDFLY_DIR}" wildfly
+    
+    if [ "$database_type" != "h2"  ]; then
+      cp "Download/db-java-client-${JDBC_CONNECTOR_VERSION}.jar" "wildfly/standalone/deployments/db-java-client.jar" || exit 1
+    fi
+    echo "remove resteasy-crypto"
+    remove_resteasy_crypto
+    
+    create_environment
+    start_wildfly
+    sleep 3
+    wildfly_check || exit 1
+    wildfly_enable_ajp || exit 1
+    tune_wildfly || exit 1
+    wildfly_reload || exit 1
+    wildfly_check || exit 1
+    
+    # Add datasource
+    case $database_type in
+        postgres)
+            wildfly_exec "data-source add --name=ejbcads --driver-name=\"db-java-client.jar\" --connection-url=\"jdbc:postgresql://${sql_host}:${database_port}/${database_name}\" --jndi-name=\"java:/EjbcaDS\" --use-ccm=true --driver-class=\"org.postgresql.Driver\" --user-name=\"${sql_user}\" --password=\"${sql_pass}\" --validate-on-match=true --background-validation=false --prepared-statements-cache-size=50 --share-prepared-statements=true --min-pool-size=5 --max-pool-size=150 --pool-prefill=true --transaction-isolation=TRANSACTION_READ_COMMITTED --check-valid-connection-sql=\"select 1;\""
+        ;;
+        mysql)
+            wildfly_exec "data-source add --name=ejbcads --driver-name=\"db-java-client.jar\" --connection-url=\"jdbc:mysql://${sql_host}:${database_port}/${database_name}\" --jndi-name=\"java:/EjbcaDS\" --use-ccm=true --driver-class=\"org.mariadb.jdbc.Driver\" --user-name=\"${sql_user}\" --password=\"${sql_pass}\" --validate-on-match=true --background-validation=false --prepared-statements-cache-size=50 --share-prepared-statements=true --min-pool-size=5 --max-pool-size=150 --pool-prefill=true --transaction-isolation=TRANSACTION_READ_COMMITTED --check-valid-connection-sql=\"select 1;\""
+        ;;
+    esac
     wildfly_exec ":reload"
-  else
-    wildfly_exec "/subsystem=undertow/server=default-server/http-listener=default:remove()"
-    wildfly_exec "/subsystem=undertow/server=default-server/https-listener=https:remove()"
-    wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=http:remove()"
-    wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=https:remove()"
+    
+    # Configure WildFly Remoting
+    if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
+        wildfly_exec "/subsystem=remoting/http-connector=http-remoting-connector:remove"
+        wildfly_exec "/subsystem=remoting/http-connector=http-remoting-connector:add(connector-ref=\"remoting\",security-realm=\"ApplicationRealm\")"
+        wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=remoting:add(port=\"4447\")"
+        wildfly_exec "/subsystem=undertow/server=default-server/http-listener=remoting:add(socket-binding=remoting)"
+    else
+        wildfly_exec "/subsystem=infinispan/cache-container=ejb:remove()"
+        wildfly_exec "/subsystem=infinispan/cache-container=server:remove()"
+        wildfly_exec "/subsystem=infinispan/cache-container=web:remove()"
+        wildfly_exec "/subsystem=ejb3/cache=distributable:remove()"
+        wildfly_exec "/subsystem=ejb3/passivation-store=infinispan:remove()"
+        wildfly_exec "/subsystem=remoting/http-connector=http-remoting-connector:write-attribute(name=connector-ref,value=remoting)"
+        wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=remoting:add(port=4447,interface=management)"
+        wildfly_exec "/subsystem=undertow/server=default-server/http-listener=remoting:add(socket-binding=remoting,enable-http2=true)"
+    fi
     wildfly_exec ":reload"
-  fi
-
-  echo "deploying EJBCA"
-  cd ejbca || exit 1
-  ant clean deployear
-  
-  ejbca_deploy_check 240
-  cd ejbca || exit 1
-  echo "starting EJBCA initialization"
-  ant runinstall
-
-  echo "deploy keystore"
-  cd ~
-  wildfly_check || exit 1
-  cd ejbca || exit 1
-  ant deploy-keystore
-  
-  cp -a p12 ../ejbca-custom/
-
-  cd $ejbca_home || exit 1
-  #wildfly_exec ":shutdown"
-  #nohup wildfly/bin/standalone.sh -b 0.0.0.0 > /dev/null 2> /dev/null &
-  #wildfly_check 240
-
-  echo "creating SQL index"
-  create_sql_index
-
-  echo "set up Wildfly https connectors"
-  wildfly_setup_https
-
-  echo "set up Wildfly logging"
-  wildfly_setup_logging
-
-
-  echo "*********************************************************************"
-  echo "* SUCCESS                                                           *"
-  echo "*********************************************************************"
+    
+    # Remove existing TLS and HTTP configuration
+    if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
+        wildfly_exec "/subsystem=undertow/server=default-server/http-listener=default:remove"
+        wildfly_exec "/subsystem=undertow/server=default-server/https-listener=https:remove"
+        wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=http:remove"
+        wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=https:remove"
+        wildfly_exec ":reload"
+    else
+        wildfly_exec "/subsystem=undertow/server=default-server/http-listener=default:remove()"
+        wildfly_exec "/subsystem=undertow/server=default-server/https-listener=https:remove()"
+        wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=http:remove()"
+        wildfly_exec "/socket-binding-group=standard-sockets/socket-binding=https:remove()"
+        wildfly_exec ":reload"
+    fi
+    
+    echo "deploying EJBCA"
+    cd /ejbca || exit 1
+    ant clean deployear
+    
+    ejbca_deploy_check 240
+    cd /ejbca || exit 1
+    echo "starting EJBCA initialization"
+    ant runinstall
+    
+    echo "deploy keystore"
+    cd ~
+    wildfly_check || exit 1
+    cd /ejbca || exit 1
+    ant deploy-keystore
+    
+    cp -a p12 ../ejbca-custom/
+    
+    cd $ejbca_home || exit 1
+    #wildfly_exec ":shutdown"
+    #nohup wildfly/bin/standalone.sh -b 0.0.0.0 > /dev/null 2> /dev/null &
+    #wildfly_check 240
+    
+    echo "creating SQL index"
+    create_sql_index
+    
+    echo "set up Wildfly https connectors"
+    wildfly_setup_https
+    
+    echo "set up Wildfly logging"
+    wildfly_setup_logging
+    
+    
+    echo "*********************************************************************"
+    echo "* SUCCESS                                                           *"
+    echo "*********************************************************************"
 }
 
 create_config_files() {
-mkdir -p ejbca-custom/conf || exit 1
-
+    mkdir -p ejbca-custom/conf || exit 1
+    
 cat <<EOF > ejbca-custom/conf/batchtool.properties
 # Property file used to configure the batch tool for generating
-# keystores. This file should be in either current directory or conf/ 
-# subdirectory or in your home directory if personlized settings is 
+# keystores. This file should be in either current directory or conf/
+# subdirectory or in your home directory if personlized settings is
 # required. If no property file is found,default values will be used.
 
 # Indicates which type of keys should be generated by the batch tool
@@ -528,7 +554,7 @@ keys.alg=RSA
 # Default: 2048
 keys.spec=2048
 EOF
-
+    
 cat <<EOF > ejbca-custom/conf/certstore.properties
 # ------------ RFC 4387 Certificate store configuration ---------------------
 # These configurations are used both for EJBCA and the Validation Authority (VA).
@@ -541,9 +567,9 @@ certstore.enabled=true
 # Default is '/certificates'
 #certstore.contextroot=/ejbca/publicweb/certificates
 EOF
-
+    
 cat <<EOF > ejbca-custom/conf/cesecore.properties
-# Set to true to allow dynamic re-configuration using properties files in the file 
+# Set to true to allow dynamic re-configuration using properties files in the file
 # system. Using this you can place a file /etc/cesecore/conf/cesecore.properties in the file system and
 # override default values compiled into ejbca.ear.
 #
@@ -567,7 +593,7 @@ ca.keystorepass=${keystorepass}
 ca.rngalgorithm=SHA1PRNG
 
 # The length in octets of certificate serial numbers generated. 8 octets is a 64 bit serial number.
-# It is really recommended to use at least 64 bits, so please leave as default unless you are really sure, 
+# It is really recommended to use at least 64 bits, so please leave as default unless you are really sure,
 # and have a really good reason to change it.
 # Possible values: between 4 and 20
 # Default: 8
@@ -634,7 +660,7 @@ intresources.secondarylanguage=en
 # ------------ Audit log configuration ---------------------
 # I you want to use integrity protection of the audit log (in the IntegrityProtectedDevice) you
 # must also configure integrity protection in conf/databaseprotection.properties
-# 
+#
 
 #### Secure audit log configuration.
 
@@ -655,7 +681,7 @@ intresources.secondarylanguage=en
 #securityeventsaudit.exporter.X=org.cesecore.audit.impl.AuditExportCsv
 #securityeventsaudit.exporter.X=org.cesecore.audit.impl.AuditExporterXml
 
-# Device implementation specific parameters (e.g. "key.subkey=value") can be passed by using 
+# Device implementation specific parameters (e.g. "key.subkey=value") can be passed by using
 #securityeventsaudit.deviceproperty.X.key.subkey=value
 
 # Example configuration of Log4jDevice that logs to log4j server log file.
@@ -712,7 +738,7 @@ securityeventsaudit.exporter.1=org.cesecore.audit.impl.AuditExporterXml
 #------------------- ECDSA implicitlyCA settings -------------
 # Sets pre-defined EC curve parameters for the implicitlyCA facility.
 # See the User's Guide for more information about the implicitlyCA facility.
-# Setting these parameters are not necessary when using regular named curves. 
+# Setting these parameters are not necessary when using regular named curves.
 # if you don't know what this means, you can safely ignore these settings.
 #
 # Default values that you can experiment with:
@@ -738,7 +764,7 @@ securityeventsaudit.exporter.1=org.cesecore.audit.impl.AuditExporterXml
 # ------------------- Authentication Key Binding settings -------------------
 # Configuration of available cipher suites for outgoing SSL/TLS connections
 # that can be selected for an Authentication Key Binding.
-# 
+#
 # Java 6: http://docs.oracle.com/javase/6/docs/technotes/guides/security/SunProviders.html#SunJSSEProvider
 #   TLS versions: SSLv3, TLSv1, SSLv2Hello
 # Java 7: http://docs.oracle.com/javase/7/docs/technotes/guides/security/SunProviders.html#SunJSSEProvider
@@ -795,8 +821,8 @@ securityeventsaudit.exporter.1=org.cesecore.audit.impl.AuditExporterXml
 # Default: 1000 (1 second)
 #ct.fastfail.backoff=60000
 EOF
-
-
+    
+    
 cat <<EOF > ejbca-custom/conf/crlstore.properties
 # ------------ RFC 4387 CRL store configuration ---------------------
 # These configurations are used both for EJBCA and the Validation Authority (VA).
@@ -809,8 +835,8 @@ crlstore.enabled=true
 # Default is '/crls'
 #crlstore.contextroot=/ejbca/publicweb/crls
 EOF
-
-
+    
+    
 cat <<EOF > ejbca-custom/conf/database.properties
 # ------------- Database configuration ------------------------
 
@@ -858,8 +884,8 @@ database.password=${database_password}
 # Default: false
 database.useSeparateCertificateTable=true
 EOF
-
-
+    
+    
 cat <<EOF > ejbca-custom/conf/ejbca.properties
 #
 # \$Id: ejbca.properties.sample 20512 2015-01-05 14:25:14Z mikekushner $
@@ -867,7 +893,7 @@ cat <<EOF > ejbca-custom/conf/ejbca.properties
 # This is a sample file to override properties used
 # during development (or deployment) of EJBCA. Note that some properties
 # have been moved to cesecore.properties.
-# 
+#
 # You should copy and rename this file to ejbca.properties
 # and customize at will.
 #
@@ -879,7 +905,7 @@ appserver.home=${ejbca_home}/wildfly
 # See also the section 'cluster configuration' for other JBoss options, for example
 # for deploying on JBoss EAP.
 
-# Which application server is used? Normally this is auto-detected from 'appserver.home' and should not be configured. 
+# Which application server is used? Normally this is auto-detected from 'appserver.home' and should not be configured.
 # Possible values: jboss, glassfish (, weblogic)
 # Default: <auto-detect>
 #appserver.type=jboss
@@ -892,7 +918,7 @@ appserver.home=${ejbca_home}/wildfly
 ejbca.productionmode=true
 #ejbca.productionmode=false
 
-# Set to true to allow dynamic re-configuration using properties files in the file 
+# Set to true to allow dynamic re-configuration using properties files in the file
 # system. Using this you can place a file /etc/ejbca/conf/ocsp.properties in the file system and
 # override default values compiled into ejbca.ear.
 # Currently this works for most values in ejbca.properties, web.properties, cmp.properties, externalra-caservice.properties, ocsp.properties, extendedkeyusage.properties, jaxws.properties, xkms.properties
@@ -927,7 +953,7 @@ approval.defaultrequestvalidity=86400
 # Default : 28800 (8 Hours)
 #approval.defaultapprovalvalidity=28800
 
-# Setting excluding some classes from approval. When one of the classes in this list calls a method that normally 
+# Setting excluding some classes from approval. When one of the classes in this list calls a method that normally
 # required approval, the call is immediately allowed, bypassing the approval mechanism. The list is comma separated.
 # Uncomment the line below to exclude extra from approvals.
 #approval.excludedClasses=org.ejbca.extra.caservice.ExtRACAServiceWorker
@@ -935,11 +961,11 @@ approval.defaultrequestvalidity=86400
 #approval.excludedClasses=org.ejbca.core.protocol.cmp.CmpMessageDispatcherSessionBean
 # Uncomment the line below to exclude revocation by CMP from approval.
 #approval.excludedClasses=org.ejbca.core.protocol.cmp.RevocationMessageHandler
-# Default : empty 
+# Default : empty
 #approval.excludedClasses=
 
 # ----------------- cluster configuration ----------------
-# The configuration. Use "all" when clustering, 
+# The configuration. Use "all" when clustering,
 # or for example "production" when deploying on JBoss EAP.
 # Default: default
 #jboss.config=all
@@ -964,22 +990,22 @@ approval.defaultrequestvalidity=86400
 
 # Parameter specifying IP addresses authorized to access the healthcheck
 # servlet. Use ';' for between multiple IPs.
-# IPv6 address can be specified, for example 127.0.0.1;0:0:0:0:0:0:0:1. 
-# "ANY" can be specified to allow any remote IP. 
-# Default: 127.0.0.1 
+# IPv6 address can be specified, for example 127.0.0.1;0:0:0:0:0:0:0:1.
+# "ANY" can be specified to allow any remote IP.
+# Default: 127.0.0.1
 #healthcheck.authorizedips=127.0.0.1
 
 # Parameter to specify if the check of CA tokens should actually perform a signature test
 # on the CA token, or it should only see if the token status is active.
-# Default: false (don't perform a signature operation) 
+# Default: false (don't perform a signature operation)
 #healthcheck.catokensigntest=false
 
 # Parameter to specify if a connection test should be performed on each publisher.
-# Default: true 
+# Default: true
 #healthcheck.publisherconnections=true
 
 # Parameter to specify location of file containing information about maintenance
-# Use this file to specify weather to include node in healthcheck or report as down for maintenance, 
+# Use this file to specify weather to include node in healthcheck or report as down for maintenance,
 # which will return an error message (either the property name specified below or a custom message specified in web.xml).
 # Default: empty (not used)
 #healthcheck.maintenancefile=~/maintenance.properties
@@ -994,7 +1020,7 @@ approval.defaultrequestvalidity=86400
 # Text string used to say that every thing is ok with this node.
 # Default=ALLOK
 #healthcheck.okmessage=ALLOK
- 	
+
 # Parameter saying if a errorcode 500 should be sent in case of error.
 # Default=true
 #healthcheck.sendservererror=true
@@ -1074,20 +1100,20 @@ ejbca.cli.defaultpassword=ejbca
 # How long to cache outgoing PeerData database objects.
 # Default: 60000 (60 seconds)
 # Possible values -1 (no caching) to 9223372036854775807 (2^63-1 = Long.MAX_VALUE).
-#  If you want caching for an infinite time then set something high for example 157680000000 (5years).  
+#  If you want caching for an infinite time then set something high for example 157680000000 (5years).
 #peerconnector.cachetime=157680000000
 #peerconnector.cachetime=-1
 EOF
-
-
-
+    
+    
+    
 cat <<EOF > ejbca-custom/conf/install.properties
 #
 # \$Id$
 #
 # This is a sample file to override default properties used
 # during installation of EJBCA (ant install)
-# 
+#
 # You should copy and rename this file to install.properties
 # and customize at will.
 #
@@ -1100,21 +1126,21 @@ cat <<EOF > ejbca-custom/conf/install.properties
 # Enter a short name for the administrative CA.
 ca.name=${ca_name}
 
-# The Distinguished Name of the administrative CA. 
+# The Distinguished Name of the administrative CA.
 # This is used in the CA certificate to distinguish the CA.
-# Note, you can not use DC components for the initial CA, you can create CAs 
+# Note, you can not use DC components for the initial CA, you can create CAs
 # using DC components later on once the admin GUI is up and running.
 ca.dn=${ca_dn}
 
 # The token type the administrative CA will use.
 # Use soft for software generated keys (default) or enter a class path for the HSM class.
-# Normally the HSM class should be the PKCS11CryptoToken. 
+# Normally the HSM class should be the PKCS11CryptoToken.
 #
 # Possible values are:
 # soft
 # org.cesecore.keys.token.PKCS11CryptoToken
 # se.primeKey.caToken.card.PrimeCAToken
-# Note: If you use JBoss 7/EAP 6 and want to use PKCS#11 you have to configure JBoss to permit this. 
+# Note: If you use JBoss 7/EAP 6 and want to use PKCS#11 you have to configure JBoss to permit this.
 #       See instructions in the Install Guide.
 #
 # Default: soft
@@ -1126,7 +1152,7 @@ ca.tokentype=soft
 # If no password should be used (for example nCipher module protected), use password '' (nothing).
 ca.tokenpassword=null
 
-# Configuration file were you define key name, password and key alias for the HSM used 
+# Configuration file were you define key name, password and key alias for the HSM used
 # by the administrative CA. Same as the Hard CA Token Properties in Admin gui.
 # Remove everything in the file and add your own configuration.
 # Note that this must be a full path.
@@ -1154,14 +1180,14 @@ ca.validity=99999
 # Type your policy id or use '2.5.29.32.0' for 'any policy' (rfc5280) or 'null' for no policy at all.
 ca.policy=null
 
-# Certificate profile used for the CA certificate created during 'ant install'. 
+# Certificate profile used for the CA certificate created during 'ant install'.
 # If you have a certificate profile imported you can use that. Otherwise default
 # profile for ROOTCA is used.
 # Default: ROOTCA
 #ca.certificateprofile=MyOwnRootCACertificateProfile
 EOF
-
-
+    
+    
 cat <<EOF > ejbca-custom/conf/web.properties
 # ------------ Web GUI configuration ---------------------
 # When upgrading, the important options are:
@@ -1206,7 +1232,7 @@ superadmin.batch=true
 
 # The password used to protect the web servers SSL keystore. Default is serverpwd
 # Choose a good password here.
-# If upgrading from EJBCA 3.1, enter here the password found in 
+# If upgrading from EJBCA 3.1, enter here the password found in
 #   \$JBOSS_HOME/server/default/deploy/jbossweb-tomcat55.sar/server.xml
 #   under the section about 'HTTPS Connector...', the password is in attribute 'keystorePass=...'.
 httpsserver.password=${httpsserver_password}
@@ -1239,7 +1265,7 @@ httpsserver.dn=CN=${httpsserver_hostname},${BASE_DN}
 # the port may be 443 instead.
 # Default same as httpserver.privhttps
 httpserver.external.privhttps=443
- 
+
 # The fully qualified domain name (FQDN) of the front-end, e.g. an Apache proxy
 #   In order to build absolute URL, the server name is got from the web client request.
 #   But with an Apache proxy, via ProxyPass directive, the server name is 'localhost'.
@@ -1250,7 +1276,7 @@ httpserver.external.privhttps=443
 # Default: (empty)
 #httpserver.external.fqdn=
 #httpserver.external.fqdn=${httpsserver_hostname}
- 
+
 # The interfaces JBoss will bind to. E.g. 127.0.0.1 will only allow connections from localhost.
 # You can also specify \${jboss.bind.address} to use JBoss configuration which interface to listen on.
 # Default 0.0.0.0
@@ -1259,7 +1285,7 @@ httpsserver.bindaddress.pubhttps=0.0.0.0
 httpsserver.bindaddress.privhttps=0.0.0.0
 
 # Defines the available languages by ISO 639-1 language codes separated with a comma (example: en,zh).
-# If you are not sure that you know how to add a new language (languagefile.xx.properties, etc.), 
+# If you are not sure that you know how to add a new language (languagefile.xx.properties, etc.),
 # we suggest you stick with the default the first time you install if you wan't to add your own language.
 # Otherwise you may not be able to log in to the Admin GUI.
 # Default: en,bs,de,es,fr,it,ja,pt,sv,uk,zh
@@ -1306,7 +1332,7 @@ web.selfreg.enabled=false
 # the username from a field in the subject DN
 #web.selfreg.certtypes.1.usernamemapping=CN
 
-# Deploy the request browser certificate renewal web application and show a 
+# Deploy the request browser certificate renewal web application and show a
 # link to it from the EJBCA public web.
 # Default = false
 web.renewalenabled=true
@@ -1341,7 +1367,7 @@ web.errorpage.stacktrace=false
 #
 # If you want this information to be included in the webservice transaction log,
 # you should add \${ADMIN_FORWARDED_IP} to the "ejbcaws.trx-log-order" property instead.
-# 
+#
 # Default: true
 web.log.adminremoteip=true
 
@@ -1403,7 +1429,7 @@ web.log.adminremoteip=true
 #cryptotoken.p11.defaultslot=i1
 
 # Available PKCS#11 CryptoToken attribute files and their display names
-# Use if the default PKCS#11 attributes are not good for the PKCS#11 module and if needs specific attributes 
+# Use if the default PKCS#11 attributes are not good for the PKCS#11 module and if needs specific attributes
 #cryptotoken.p11.attr.0.name=
 #cryptotoken.p11.attr.0.file=
 #...
@@ -1414,13 +1440,13 @@ EOF
 
 
 tune_wildfly() {
-  wildfly_exec "/subsystem=io/worker=default/:write-attribute(name=task-max-threads,value=500)"
-  wildfly_exec "/subsystem=io/worker=default/:write-attribute(name=io-threads,value=500)"
+    wildfly_exec "/subsystem=io/worker=default/:write-attribute(name=task-max-threads,value=500)"
+    wildfly_exec "/subsystem=io/worker=default/:write-attribute(name=io-threads,value=500)"
 }
 
 
 create_environment() {
-  cd ~
+    cd ~
 cat <<EOF > environment
 JAVA_OPTS="-Xms${memsize}m -Xmx${memsize}m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m -XX:+UseParallelGC -Djava.net.preferIPv4Stack=true -Djboss.modules.system.pkgs=\$JBOSS_MODULES_SYSTEM_PKGS -Djava.awt.headless=true -Dsun.rmi.dgc.client.gcInterval=1800000 -Dsun.rmi.dgc.server.gcInterval=1800000"
 EOF
@@ -1428,68 +1454,68 @@ EOF
 
 
 remove_resteasy_crypto() {
-  cd ~/wildfly || exit 1
-  sed -i 's|.*org.jboss.resteasy.resteasy-crypto.*||' modules/system/layers/base/org/jboss/as/jaxrs/main/module.xml
-  rm -rf modules/system/layers/base/org/jboss/resteasy/resteasy-crypto
+    cd ~/wildfly || exit 1
+    sed -i 's|.*org.jboss.resteasy.resteasy-crypto.*||' modules/system/layers/base/org/jboss/as/jaxrs/main/module.xml
+    rm -rf modules/system/layers/base/org/jboss/resteasy/resteasy-crypto
 }
 
 
 cat <<EOF
-#######        #  ######    #####      #     
-#              #  #     #  #     #    # #    
-#              #  #     #  #         #   #   
-#####          #  ######   #        #     #  
-#        #     #  #     #  #        #######  
-#        #     #  #     #  #     #  #     #  
-#######   #####   ######    #####   #     #  
+#######        #  ######    #####      #
+#              #  #     #  #     #    # #
+#              #  #     #  #         #   #
+#####          #  ######   #        #     #
+#        #     #  #     #  #        #######
+#        #     #  #     #  #     #  #     #
+#######   #####   ######    #####   #     #
 
 This installs the EJBCA PKI
 EOF
 
 cd ~
 if [ $EUID -eq 0 ]; then
-  echo "Do not execute this script as root"
-  echo "We did nothing yet"
-  exit 1
+    echo "Do not execute this script as root"
+    echo "We did nothing yet"
+    exit 1
 fi
 
 
 cd ~
 if [ -d ejbca-custom ]; then
-  echo "ejba-custom already exists"
-  echo "we will do nothing here"
-  exit 0
+    echo "ejba-custom already exists"
+    echo "we will do nothing here"
+    exit 0
 fi
 
 
 PKG_INSTALL=""
 if [ -f /etc/redhat-release ]; then
-  echo "found RedHat/CentOS"
-  PKG_INSTALL="yum install tar unzip java-1.8.0-openjdk-devel ant psmisc bc patch"
-  case $database_type in
-    postgres)
-      PKG_INSTALL="$PKG_INSTALL postgresql"
-    ;;
-    mysql)
-      PKG_INSTALL="$PKG_INSTALL mariadb"
-    ;;
-  esac
-
+    echo "found RedHat/CentOS"
+    PKG_INSTALL="yum install tar unzip java-1.8.0-openjdk-devel ant psmisc bc patch"
+    case $database_type in
+        postgres)
+            PKG_INSTALL="$PKG_INSTALL postgresql"
+        ;;
+        mysql)
+            PKG_INSTALL="$PKG_INSTALL mariadb"
+        ;;
+    esac
+    
 else if [ -f /etc/debian_version ]; then
-  echo "found Debian/Ubuntu"
-  PKG_INSTALL="apt install unzip openjdk-8-jdk-headless ant ant-optional psmisc bc patch curl"
-  case $database_type in
-    postgres)
-      PKG_INSTALL="$PKG_INSTALL postgresql-client"
-    ;;
-    mysql)
-      PKG_INSTALL="$PKG_INSTALL mariadb-client"
-    ;;
-  esac
-
-  else
-    echo "Unknown platform, your milage may vary"
-  fi
+        echo "found Debian/Ubuntu"
+        PKG_INSTALL="apt install unzip openjdk-8-jdk-headless ant ant-optional psmisc bc patch curl"
+        case $database_type in
+            postgres)
+                PKG_INSTALL="$PKG_INSTALL postgresql-client"
+            ;;
+            mysql)
+                PKG_INSTALL="$PKG_INSTALL mariadb-client"
+            ;;
+        esac
+        
+    else
+        echo "Unknown platform, your milage may vary"
+    fi
 fi
 
 echo "EJBCA will be installed on user ${ejbca_user}"

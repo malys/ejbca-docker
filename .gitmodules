@@ -1,0 +1,3 @@
+[submodule "ejbca_src"]
+	path = ejbca_src
+	url = https://github.com/malys/ejbca.git
