@@ -23,7 +23,7 @@ services:
     volumes:
       - ./ejbca_src:/ejbca
       - ./workspace:/home/ejbca
-      - ./ejbca-setup:/home/ejbca/ejbca-setup
+      - ./ejbca-setup:/root/ejbca-setup
     hostname: ejbca-dev
     logging:
       driver: json-file

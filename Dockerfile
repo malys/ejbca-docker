@@ -2,6 +2,7 @@ from centos:8
 maintainer Christian Felsing <support@felsing.net>
 
 ENV SOURCE=remote
+ENV DB_PATH=/home/ejbca/data
 
 user root
 

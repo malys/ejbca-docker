@@ -1,1 +1,1 @@
-Mounted wordskpace
+Mounted workspace

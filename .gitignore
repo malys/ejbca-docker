@@ -1,2 +1,9 @@
 .env
 ejbca
+
+/workspace/wildfly/
+/workspace/ejbca-custom/
+/workspace/Download/
+/workspace/ejbca-setup
+/workspace/entrypoint.ejbca.sh
+/workspace/environment

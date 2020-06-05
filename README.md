@@ -2,8 +2,6 @@
 
 ## Usage
 
-
-
 Configure docker-compose environment variables:
 
     httpsserver_hostname=ejbca.example.com
@@ -16,14 +14,19 @@ Configure docker-compose environment variables:
     database_type=postgres
     database_port=5432
     #database_type=mysql
-    #database_type=h2
+    # h2 only
+    # database_type=h2
+    # DB_PATH=/home/ejbca/data
     
     superadmin_cn=SuperAdmin2020
     ca_name=Management
     BASE_DN=O=My Example CA 2020,C=DE
 
+    # Source code mode
     SOURCE=SVN|GIT|REMOTE
     SOURCE not set -> use mounted folder
+
+
 
 
 Build container
@@ -45,6 +48,15 @@ Next start fires up EJBCA instance
 or use simply enclosed script
 
     restart
+
+# Local build
+
+``` bash
+ant deployear 
+
+```
+
+## 
 
 # Security Considerations
 
