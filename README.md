@@ -2,9 +2,9 @@
 
 ## Usage
 
-Create initial volume: ./setup.sh
 
-Create an .env file:
+
+Configure docker-compose environment variables:
 
     httpsserver_hostname=ejbca.example.com
     database_host=psql
@@ -16,7 +16,6 @@ Create an .env file:
     database_type=postgres
     database_port=5432
     #database_type=mysql
-
     #database_type=h2
     
     superadmin_cn=SuperAdmin2020
@@ -25,7 +24,6 @@ Create an .env file:
 
     SOURCE=SVN|GIT|REMOTE
     SOURCE not set -> use mounted folder
-
 
 
 Build container

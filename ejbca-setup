@@ -187,7 +187,7 @@ wildfly_reload() {
 
 
 wildfly_check() {
-    DURATION_SECONDS=30
+    DURATION_SECONDS=60
     if [ ! -z "$1" ]; then
         DURATION_SECONDS="$1"
     fi
@@ -267,7 +267,7 @@ wildfly_setup_https() {
     fi
     wildfly_exec ":reload"
     
-    wildfly_check
+    wildfly_check 60
     
     if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
         wildfly_exec "/core-service=management/security-realm=SSLRealm:add()"
@@ -297,7 +297,7 @@ wildfly_setup_https() {
         wildfly_exec "/subsystem=undertow/server=default-server/https-listener=httpspriv:add(socket-binding=\"httpspriv\", ssl-context=\"httpspriv\", max-parameters=2048)"
     fi
     wildfly_exec ":reload"
-    wildfly_check 30
+    wildfly_check 60
     
     if [ "$WILDFLY_VERSION" = "10.1.0.Final" ]; then
         wildfly_exec "/system-property=org.apache.tomcat.util.buf.UDecoder.ALLOW_ENCODED_SLASH:add(value=true)"
@@ -316,7 +316,7 @@ wildfly_setup_https() {
         wildfly_exec "/subsystem=webservices:write-attribute(name=modify-wsdl-address, value=true)"
     fi
     wildfly_exec ":reload"
-    wildfly_check 30
+    wildfly_check 60
 }
 
 
@@ -332,7 +332,7 @@ wildfly_setup_logging() {
     #  wildfly_exec "/subsystem=logging/logger=org.cesecore:add(level=INFO)"
     #fi
     wildfly_exec ":reload"
-    wildfly_check 30
+    wildfly_check 60
 }
 
 
@@ -429,8 +429,7 @@ ejbca_installer() {
     rm -rf "ejbca_ce_${EJBCA_RELEASE}" > /dev/null 2> /dev/null
     
     get_source
-    
-    
+
     tar xvf Download/${WILDFLY_TAR}
     if [ -h wildfly ]; then
         rm -f wildfly
@@ -459,6 +458,9 @@ ejbca_installer() {
         ;;
         mysql)
             wildfly_exec "data-source add --name=ejbcads --driver-name=\"db-java-client.jar\" --connection-url=\"jdbc:mysql://${sql_host}:${database_port}/${database_name}\" --jndi-name=\"java:/EjbcaDS\" --use-ccm=true --driver-class=\"org.mariadb.jdbc.Driver\" --user-name=\"${sql_user}\" --password=\"${sql_pass}\" --validate-on-match=true --background-validation=false --prepared-statements-cache-size=50 --share-prepared-statements=true --min-pool-size=5 --max-pool-size=150 --pool-prefill=true --transaction-isolation=TRANSACTION_READ_COMMITTED --check-valid-connection-sql=\"select 1;\""
+        ;;
+        h2)
+            wildfly_exec "data-source add --name=ejbcads --driver-name=\"h2\" --connection-url=\"jdbc:h2:file:/home/ejbca/data/${database_name}\" --jndi-name=\"java:/EjbcaDS\""
         ;;
     esac
     wildfly_exec ":reload"
@@ -498,7 +500,11 @@ ejbca_installer() {
     
     echo "deploying EJBCA"
     cd /ejbca || exit 1
-    ant clean deployear
+    if [ -n "${FORCE_CLEAN+1}" ]; then
+        ant clean
+    fi
+    
+    ant deployear
     
     ejbca_deploy_check 240
     cd /ejbca || exit 1
@@ -511,8 +517,9 @@ ejbca_installer() {
     cd /ejbca || exit 1
     ant deploy-keystore
     
-    cp -a p12 ../ejbca-custom/
-    
+    if [ -d p12 ]; then
+      cp -a p12 ../ejbca-custom/ 
+    fi    
     cd $ejbca_home || exit 1
     #wildfly_exec ":shutdown"
     #nohup wildfly/bin/standalone.sh -b 0.0.0.0 > /dev/null 2> /dev/null &
@@ -520,13 +527,12 @@ ejbca_installer() {
     
     echo "creating SQL index"
     create_sql_index
-    
-    echo "set up Wildfly https connectors"
-    wildfly_setup_https
-    
+
     echo "set up Wildfly logging"
     wildfly_setup_logging
     
+    echo "set up Wildfly https connectors"
+    wildfly_setup_https
     
     echo "*********************************************************************"
     echo "* SUCCESS                                                           *"

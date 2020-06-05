@@ -15,6 +15,11 @@ services:
       - SOURCE=mounted
     build:
       context: .
+    ports:
+      - "8443:8443"
+      - "8080:8080"
+      - "9990:9990"
+      - "9993:9993"
     volumes:
       - ./ejbca_src:/ejbca
       - ./workspace:/home/ejbca
