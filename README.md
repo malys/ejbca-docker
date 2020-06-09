@@ -1,5 +1,11 @@
 # Docker build EJBCA Server From Scratch
 
+## GIT
+
+```
+git submodule update --init --recursive
+```
+
 ## Usage
 
 Configure docker-compose environment variables:
@@ -26,20 +32,19 @@ Configure docker-compose environment variables:
     SOURCE=SVN|GIT|REMOTE
     SOURCE not set -> use mounted folder
 
+# Docker
 
-
-
-Build container
+## Build container
 
     docker-compose build
 
-# Install EJBCA Container
+## Install EJBCA Container
 
     docker-compose up
 
 First start builds EJBCA and terminates then
 
-# Let's Go
+## Let's Go
 
 Next start fires up EJBCA instance
 
@@ -49,22 +54,21 @@ or use simply enclosed script
 
     restart
 
-# Local build
+## Source 
+
+### Local build
 
 ``` bash
 ant deployear 
-
 ```
 
-## 
-
-# Security Considerations
+## Security Considerations
 
 This builds an EJBCA as is. It is strongly recommended to use a reverse Proxy
 server in front of EJBCA to filter access.
 Wildfly opens some ports which should not be exposed to Internet.
 
-# Content
+## Content
 
 Container is built an Centos8, Wildfly 14.0.1 and EJBCA 6.15.2.5 Community (r33900)
 
